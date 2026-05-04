@@ -1,0 +1,33 @@
+[project]
+name = "splitnc"
+version = "v0.1"
+authors = [
+    {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
+]
+maintainers = [
+    {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
+]
+description = "Split multi-field ESM1.6 files into single-field files"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "netcdf4",
+    "xarray",
+]
+
+[project.optional-dependencies]
+    test = [
+        "pytest",
+        "netCDF4",
+        "xarray>2025.1.2",
+    ]
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools",
+]
+
+[tool.pytest.ini_options]
+    testpaths = "test"
+    pythonpath = "."

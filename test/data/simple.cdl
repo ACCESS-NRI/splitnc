@@ -1,0 +1,36 @@
+netcdf iceh-1daily-mean_2345-01 {
+dimensions:
+	time = UNLIMITED ; // (31 currently)
+	lat = 145 ;
+	lon = 192 ;
+	bnds = 2 ;
+variables:
+	float time(time) ;
+		time:long_name = "model time" ;
+		time:units = "days since 0001-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+		time:bounds = "time_bounds" ;
+	float time_bounds(time, bnds) ;
+		time_bounds:long_name = "boundaries for time-averaging interval" ;
+		time_bounds:units = "days since 0001-01-01 00:00:00" ;
+	double lat(lat) ;
+		lat:axis = "Y" ;
+		lat:bounds = "lat_bnds" ;
+		lat:units = "degrees_north" ;
+		lat:standard_name = "latitude" ;
+	double lat_bnds(lat, bnds) ;
+	double lon(lon) ;
+		lon:axis = "X" ;
+		lon:bounds = "lon_bnds" ;
+		lon:units = "degrees_east" ;
+		lon:standard_name = "longitude" ;
+	double lon_bnds(lon, bnds) ;
+	float field(time, lat, lon) ;
+		field:units = "1" ;
+		field:long_name = "some field" ;
+		field:coordinates = "secondary_field" ;
+		field:_FillValue = 1.e+30f ;
+	float secondary_field(lat, lon) ;
+		secondary_field:long_name = "some secondary field" ;
+		secondary_field:units = "1" ;
+}
