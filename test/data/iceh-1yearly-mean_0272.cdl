@@ -1,0 +1,97 @@
+netcdf iceh-1yearly-mean_0272 {
+dimensions:
+	d2 = 2 ;
+	ni = 360 ;
+	nj = 300 ;
+	nc = 5 ;
+	nkice = 1 ;
+	nksnow = 1 ;
+	nkbio = 2 ;
+	time = UNLIMITED ; // (1 currently)
+	nvertices = 4 ;
+variables:
+	double time(time) ;
+		time:long_name = "model time" ;
+		time:units = "days since 0001-01-01 00:00:00" ;
+		time:calendar = "proleptic_gregorian" ;
+		time:bounds = "time_bounds" ;
+	float time_bounds(time, d2) ;
+		time_bounds:long_name = "boundaries for time-averaging interval" ;
+		time_bounds:units = "days since 0001-01-01 00:00:00" ;
+	float TLON(nj, ni) ;
+		TLON:long_name = "T grid center longitude" ;
+		TLON:units = "degrees_east" ;
+		TLON:missing_value = 1.e+30f ;
+		TLON:_FillValue = 1.e+30f ;
+	float TLAT(nj, ni) ;
+		TLAT:long_name = "T grid center latitude" ;
+		TLAT:units = "degrees_north" ;
+		TLAT:missing_value = 1.e+30f ;
+		TLAT:_FillValue = 1.e+30f ;
+	float ULON(nj, ni) ;
+		ULON:long_name = "U grid center longitude" ;
+		ULON:units = "degrees_east" ;
+		ULON:missing_value = 1.e+30f ;
+		ULON:_FillValue = 1.e+30f ;
+	float ULAT(nj, ni) ;
+		ULAT:long_name = "U grid center latitude" ;
+		ULAT:units = "degrees_north" ;
+		ULAT:missing_value = 1.e+30f ;
+		ULAT:_FillValue = 1.e+30f ;
+		ULAT:comment = "Latitude of NE corner of T grid cell" ;
+	float NCAT(nc) ;
+		NCAT:long_name = "category maximum thickness" ;
+		NCAT:units = "m" ;
+	float VGRDi(nkice) ;
+		VGRDi:long_name = "vertical ice levels" ;
+		VGRDi:units = "1" ;
+	float VGRDs(nksnow) ;
+		VGRDs:long_name = "vertical snow levels" ;
+		VGRDs:units = "1" ;
+	float VGRDb(nkbio) ;
+		VGRDb:long_name = "vertical ice-bio levels" ;
+		VGRDb:units = "1" ;
+	float tmask(nj, ni) ;
+		tmask:long_name = "ocean grid mask" ;
+		tmask:coordinates = "TLON TLAT" ;
+		tmask:comment = "0 = land, 1 = ocean" ;
+		tmask:missing_value = 1.e+30f ;
+		tmask:_FillValue = 1.e+30f ;
+	float tarea(nj, ni) ;
+		tarea:long_name = "area of T grid cells" ;
+		tarea:units = "m^2" ;
+		tarea:coordinates = "TLON TLAT" ;
+		tarea:missing_value = 1.e+30f ;
+		tarea:_FillValue = 1.e+30f ;
+	float uarea(nj, ni) ;
+		uarea:long_name = "area of U grid cells" ;
+		uarea:units = "m^2" ;
+		uarea:coordinates = "ULON ULAT" ;
+		uarea:missing_value = 1.e+30f ;
+		uarea:_FillValue = 1.e+30f ;
+	float siconc(time, nj, ni) ;
+		siconc:units = "%" ;
+		siconc:long_name = "Sea-Ice Area Percentage (Ocean Grid)" ;
+		siconc:coordinates = "TLON TLAT time" ;
+		siconc:cell_measures = "area: tarea" ;
+		siconc:missing_value = 1.e+30f ;
+		siconc:_FillValue = 1.e+30f ;
+		siconc:cell_methods = "area: mean where sea time: mean" ;
+		siconc:time_rep = "averaged" ;
+
+// global attributes:
+		:title = "sea ice model output for CICE" ;
+		:contents = "Diagnostic and Prognostic Variables" ;
+		:source = "Los Alamos Sea Ice Model (CICE) Version 5" ;
+		:time_period_freq = "year_1" ;
+		:comment = "This year has 365 days" ;
+		:comment2 = "File started on model date 02730101" ;
+		:history = "This dataset was created on 2026-05-15 at 12:30:06.6" ;
+		:io_flavor = "io_netcdf" ;
+data:
+
+ time = 99346 ;
+
+ time_bounds =
+  98980, 99346 ;
+}

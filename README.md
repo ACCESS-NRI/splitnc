@@ -28,7 +28,7 @@ Newline characters in the file will be treated as whitespace, i.e. newlines can 
 
 For example to replicate this command line,
 ```
-python splitnc.py --verbose --overwrite --output-dir /output/directory --shared-vars latitude_longitude --rename-regex "(?P<newname>.+)_\d+" /input/directory/*.nc
+splitnc --verbose --overwrite --output-dir /output/directory --shared-vars latitude_longitude --rename-regex "(?P<newname>.+)_\d+" /input/directory/*.nc
 ```
 the following file could be used;
 ```
@@ -68,6 +68,16 @@ options:
   --rename-regex REGEX  Look for duplicated coordinate names that match the given regex and rename them to the first
                         "newname" capture group in the regex. E.g. "(?P<newname>.*)_\d+" will match "time_0" and rename
                         it to "time".
+  --use-esm1p6-filenames
+                        Use the ESM1.6 filename pattern for the output files:
+                        access-esm1p6.{component}.{dimensions}.{field}.{freq}.{time_cell_method}.{datestamp}.nc
+                        splitnc will attempt to deduce all the components of the filename. If this option is not given
+                        {field}_{original_filename} will be used.
+  --file-freq FILE_FREQ
+                        Specify the frequency of the files (not the data), e.g. if each file contains a month of data
+                        then the file-frequency is '1mon'. Used to determine the resolution of the timestamp for ESM1.6
+                        filenames. Follows the ACCESS frequency vocabulary (e.g. '1yr', '1mon', '1day', '1hr'), any
+                        unrecognised frequency will use the full timestamp. Defaults to '1yr'.
   --output-dir OUTPUT_DIR
                         Output directory for the processed files. If not given output files will be placed in the same
                         directory as the original file.
@@ -89,7 +99,7 @@ Alternatively create a new python environment and install `xarray` and `netCDF4`
 ### Atmosphere
 To use this script for split multi-field atmosphere files from ACCESS-ESM1.6:
 ```bash
-python split-nc.py --shared-vars latitude_longitude  --rename-regex "(?P<newname>.+)_\\d+" $INPUT_DIR/*.nc
+splitnc --shared-vars latitude_longitude  --rename-regex "(?P<newname>.+)_\\d+" $INPUT_DIR/*.nc
 ```
 
 `splitnc` will automatically determine which variables are fields by looking at which variables depend on other variables.
@@ -105,7 +115,7 @@ included in all files even though none of the field variable depend on it.
 ### Ice
 To use this script for split multi-field ice files from ACCESS-ESM1.6:
 ```bash
-python split-nc.py --shared-vars uarea,tmask,tarea --excluded-vars VGRD. $INPUT_DIR/*.nc
+splitnc --shared-vars uarea,tmask,tarea --excluded-vars VGRD. $INPUT_DIR/*.nc
 ```
 
 In comparison to the atmosphere files, ice files have different shared-vars and there are no duplicated variables that require renaming.

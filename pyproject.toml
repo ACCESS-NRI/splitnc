@@ -22,6 +22,9 @@ dependencies = [
         "xarray>2025.1.2",
     ]
 
+[project.scripts]
+splitnc = "splitnc:main"
+
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
@@ -30,4 +33,4 @@ requires = [
 
 [tool.pytest.ini_options]
     testpaths = "test"
-    pythonpath = "."
+    pythonpath = "src"

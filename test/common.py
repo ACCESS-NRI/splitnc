@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-import pytest
 import shlex
 import subprocess
 
@@ -18,8 +17,9 @@ def runcmd(cmd, wd=None, env=None):
     )
 
 
-def make_nc(tmp_path, cdl_file, filename="test.nc"):
-    filepath = f"{tmp_path}/{filename}"
+def make_nc(tmp_path, cdl_file):
+    nc_filename = Path(cdl_file).with_suffix(".nc").name
+    filepath = f"{tmp_path}/{nc_filename}"
     cmd = f"ncgen -o {filepath}  {cdl_file}"
 
     runcmd(cmd)

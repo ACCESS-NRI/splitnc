@@ -1890,6 +1890,16 @@ variables:
 		fld_s33i002:cell_methods = "time: mean" ;
 		fld_s33i002:grid_mapping = "latitude_longitude" ;
 		fld_s33i002:coordinates = "sigma_theta surface_altitude theta_level_height" ;
+	float fld_artificial(time, model_theta_level_number, lat, lon) ;
+		fld_artificial:_FillValue = 1.e+20f ;
+		fld_artificial:long_name = "ATM TRACER  2               AFTER TS" ;
+		fld_artificial:um_stash_source = "m01s33i002" ;
+		fld_artificial:missing_value = 1.e+20f ;
+		fld_artificial:cell_methods = "time: point" ;
+		fld_artificial:grid_mapping = "latitude_longitude" ;
+		fld_artificial:coordinates = "sigma_theta surface_altitude theta_level_height" ;
+		fld_artificial:notes = "this variable was added manually to test 'time: point' filenames" ;
+
 
 // global attributes:
 		:history = "File /scratch/p66/jxs599/access-esm/archive/Nov25-NewNitrogen-Nov25-NewNitrogen-6a5acd30/output200/atmosphere/aiihca.pai5jan converted with /g/data/vk83/apps/base_conda/envs/payu-1.2.0/lib/python3.10/site-packages/um2nc/um2netcdf.py 1.1.0 at 2025-12-04 20:03:16" ;

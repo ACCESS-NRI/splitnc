@@ -1,4 +1,4 @@
-netcdf iceh-1monthly-mean_2345-01 {
+netcdf iceh-2monthly-mean_0272 {
 dimensions:
 	d2 = 2 ;
 	ni = 360 ;
@@ -7,10 +7,10 @@ dimensions:
 	nkice = 1 ;
 	nksnow = 1 ;
 	nkbio = 2 ;
-	time = UNLIMITED ; // (1 currently)
+	time = UNLIMITED ; // (6 currently)
 	nvertices = 4 ;
 variables:
-	float time(time) ;
+	double time(time) ;
 		time:long_name = "model time" ;
 		time:units = "days since 0001-01-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
@@ -568,7 +568,7 @@ variables:
 		siflfwbot:long_name = "Freshwater Flux from Sea Ice" ;
 		siflfwbot:coordinates = "TLON TLAT time" ;
 		siflfwbot:cell_measures = "area: tarea" ;
-		siflfwbot:comment = "area weighted average, positive downward, per unit grid cell area" ;
+		siflfwbot:comment = "area weighted average, positive downward, per sea ice area" ;
 		siflfwbot:missing_value = 1.e+30f ;
 		siflfwbot:_FillValue = 1.e+30f ;
 		siflfwbot:cell_methods = "area: time: mean where sea_ice (mask=siconc)" ;
@@ -586,7 +586,7 @@ variables:
 	float siitdconc(time, nc, nj, ni) ;
 		siitdconc:units = "%" ;
 		siitdconc:long_name = "Sea-Ice Area Percentage in Ice Thickness Categories" ;
-		siitdconc:coordinates = "TLON TLAT NCAT time" ;
+		siitdconc:coordinates = "TLON TLAT NCAT  time" ;
 		siitdconc:cell_measures = "area: tarea" ;
 		siitdconc:missing_value = 1.e+30f ;
 		siitdconc:_FillValue = 1.e+30f ;
@@ -597,14 +597,20 @@ variables:
 		:title = "sea ice model output for CICE" ;
 		:contents = "Diagnostic and Prognostic Variables" ;
 		:source = "Los Alamos Sea Ice Model (CICE) Version 5" ;
-		:comment = "This year has 365 days" ;
-		:comment2 = "File started on model date 23450201" ;
-		:history = "This dataset was created on 2025-12-04 at 19:07:59.0" ;
+		:time_period_freq = "month_2" ;
+		:comment = "This year has 366 days" ;
+		:comment2 = "File started on model date 02720301" ;
+		:history = "This dataset was created on 2026-05-15 at 13:49:47.2" ;
 		:io_flavor = "io_netcdf" ;
 data:
 
- time = 856143.5 ;
+ time = 99025.5, 99086, 99147, 99208.5, 99269.5, 99330.5 ;
 
  time_bounds =
-  856128, 856159 ;
+  98980, 99040,
+  99040, 99101,
+  99101, 99162,
+  99162, 99224,
+  99224, 99285,
+  99285, 99346 ;
 }

@@ -10,6 +10,8 @@ import sys
 
 import xarray as xr
 
+from splitnc.esm1p6 import build_esm1p6_filename
+
 
 def determine_field_vars(ds):
     """
@@ -232,6 +234,25 @@ def update_history_attr(ds, new_history):
     ds.attrs["history"] = old_history + new_history
 
 
+def build_filename(ds, field_name, input_filepath, esm1p6_filename=False, file_freq="1yr"):
+    """
+    Build the filename used for the output.
+
+    If esm1p6_filename=False then <field_name>_<orginal_file_name> will be used.
+
+    Otherwise a filename that follows the ESM1.6 naming scheme will be used:
+    {model}.{component}.{dimensions}.{field}.{freq}.{time_cell_method}.{datestamp}.nc
+    More info here: https://access-om3-configs.access-hive.org.au/configurations/Ocean_diagnostics/
+    Elements of this schema will be deduced from the Dataset, the original filename,
+    and the given output file frequency.
+    """
+    if esm1p6_filename:
+        return build_esm1p6_filename(ds, field_name, input_filepath,
+            esm1p6_filename=esm1p6_filename, file_freq=file_freq)
+    else:
+        return f"{field_name}_{input_filepath.name}"
+
+
 def process_file(
     filepath,
     field_vars=None,
@@ -241,12 +262,14 @@ def process_file(
     output_dir=None,
     overwrite=False,
     update_history=True,
+    esm1p6_filename=False,
+    file_freq="1yr",
 ):
     logging.debug(f"Processing {filepath}")
     filepath = Path(filepath)
 
     # Use cftime to suppress warnings
-    decoder = xr.coders.CFDatetimeCoder(use_cftime=True)
+    decoder = xr.coders.CFDatetimeCoder(time_unit='us')
     with xr.open_dataset(filepath, decode_times=decoder) as ds:
         # Resolve any regex in the excluded_vars list
         if excluded_vars:
@@ -342,22 +365,36 @@ def process_file(
             else:
                 output_dir = filepath.parent
 
-            output_filename = output_dir / f"{v}_{filepath.name}"
-            logging.debug(f"Output filepath is {output_filename}")
+            # Build the output filepath
+            filename = build_filename(
+                ds=ds_v,
+                field_name=v,
+                input_filepath=filepath,
+                esm1p6_filename=esm1p6_filename,
+                file_freq=file_freq,
+            )
+            output_filepath = output_dir / filename
+            logging.debug(f"Output filepath is {output_filepath}")
 
-            if not overwrite and output_filename.exists():
-                logging.error(f"Output file already exists - {output_filename}")
+            # Write to file
+            if not overwrite and output_filepath.exists():
+                logging.error(f"Output file already exists - {output_filepath}")
                 logging.error("Use --overwrite to overwrite existing files")
 
-                raise FileExistsError(f"{output_filename} already exists")
+                raise FileExistsError(f"{output_filepath} already exists")
 
             logging.debug("Creating parent directory and writing to output file")
-            output_filename.parent.mkdir(parents=True, exist_ok=True)
-            ds_v.to_netcdf(output_filename)
+            output_filepath.parent.mkdir(parents=True, exist_ok=True)
+            ds_v.to_netcdf(output_filepath)
 
 
 #### Main
 def arg_parse(cmdline_args=None):
+    # If -c/--command-line-file is being used then all other args are ignored
+    # This affects which are "required" (or nargs for filepaths)
+    args = sys.argv if cmdline_args is None else cmdline_args
+    cmd_file_arg_present = "-c" in args or "--command-line-file" in args
+
     parser = argparse.ArgumentParser(
         prog="splitnc",
         description="Splits a multi-field netCDF file into separate one-field files",
@@ -384,7 +421,7 @@ def arg_parse(cmdline_args=None):
     # required and --cmd-line-file can be used on it's own
     parser.add_argument(
         "filepaths",
-        nargs="*",
+        nargs="*" if cmd_file_arg_present else "+",
         default=[],
         type=globbable_string_list,
         help="One or more filepaths to process",
@@ -424,6 +461,24 @@ def arg_parse(cmdline_args=None):
         'and rename them to the first "newname" capture group in the '
         'regex. E.g. "(?P<newname>.*)_\\d+" will match "time_0" and '
         'rename it to "time".',
+    )
+    parser.add_argument(
+        "--use-esm1p6-filenames",
+        action="store_true",
+        help="Use the ESM1.6 filename pattern for the output files: "
+        "access-esm1p6.{component}.{dimensions}.{field}.{freq}.{time_cell_method}.{datestamp}.nc"
+        " splitnc will attempt to deduce all the components of the filename. "
+        "If this option is not given {field}_{original_filename} will be used."
+    )
+    parser.add_argument(
+        "--file-freq",
+        default="1yr",
+        help="Specify the frequency of the files (not the data), e.g. if each "
+        "file contains a month of data then the file-frequency is '1mon'. Used "
+        "to determine the resolution of the timestamp for ESM1.6 filenames. "
+        "Follows the ACCESS frequency vocabulary (e.g. '1yr', '1mon', '1day', "
+        "'1hr'), any unrecognised frequency will use the full timestamp. "
+        "Defaults to '1yr'."
     )
     parser.add_argument(
         "--output-dir",
@@ -496,6 +551,8 @@ def main():
             output_dir=args.output_dir,
             overwrite=args.overwrite,
             update_history=not args.dont_update_history,
+            esm1p6_filename=args.use_esm1p6_filenames,
+            file_freq=args.file_freq,
         )
 
 
