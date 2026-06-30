@@ -234,6 +234,25 @@ def update_history_attr(ds, new_history):
     ds.attrs["history"] = old_history + new_history
 
 
+def fix_cell_methods(ds, varname):
+    """
+    Fix missing cell_methods for instantaneous variables from um2nc.
+
+    If variable has 'time' but no time 'bounds' and there are no other 'time'
+    cell_methods then add 'time: point' to the cell_methods.
+    """
+    if "time" in ds and "bounds" not in ds["time"].attrs:
+        try:
+            cell_methods = ds[varname].attrs["cell_methods"]
+        except KeyError:
+            cell_methods = ""
+
+        if "time" not in cell_methods:
+            new_cell_methods = f"{cell_methods} time: point".strip()
+            logging.debug(f"Updating cell_methods for {varname} to {new_cell_methods}")
+            ds[varname].attrs["cell_methods"] = new_cell_methods
+
+
 def build_filename(ds, field_name, input_filepath, esm1p6_filename=False, file_freq="1yr"):
     """
     Build the filename used for the output.
@@ -253,18 +272,21 @@ def build_filename(ds, field_name, input_filepath, esm1p6_filename=False, file_f
         return f"{field_name}_{input_filepath.name}"
 
 
-def process_file(
-    filepath,
-    field_vars=None,
-    shared_vars=None,
-    excluded_vars=None,
-    rename_regex=None,
-    output_dir=None,
-    overwrite=False,
-    update_history=True,
-    esm1p6_filename=False,
-    file_freq="1yr",
-):
+def process_file(filepath, **kwargs):
+    # Define default kwargs and update them with kwargs
+    kwargs = {
+        "excluded_vars": [],
+        "shared_vars": [],
+        "field_vars": None,
+        "rename_regex": None,
+        "update_history": True,
+        "fix_cell_methods": False,
+        "output_dir": False,
+        "use_esm1p6_filenames": False,
+        "file_freq": "1yr",
+        "overwrite": False,
+    } | kwargs
+
     logging.debug(f"Processing {filepath}")
     filepath = Path(filepath)
 
@@ -272,30 +294,25 @@ def process_file(
     decoder = xr.coders.CFDatetimeCoder(time_unit='us')
     with xr.open_dataset(filepath, decode_times=decoder) as ds:
         # Resolve any regex in the excluded_vars list
-        if excluded_vars:
+        if excluded_vars:=kwargs["excluded_vars"]:
             excluded_vars = match_regex_list(excluded_vars, ds.variables)
-        else:
-            excluded_vars = []
         logging.debug(f"List of defined excluded variables is: {excluded_vars}")
 
         # Resolve any regex in the shared_vars list
-        if shared_vars:
+        if shared_vars:=kwargs["shared_vars"]:
             shared_vars = match_regex_list(shared_vars, ds.variables)
 
             # shared_vars should not be in excluded vars
             shared_vars = [v for v in shared_vars if v not in excluded_vars]
-        else:
-            shared_vars = []
         logging.debug(f"List of defined shared variables is: {shared_vars}")
 
         # Determine the field vars
-        if field_vars is None or len(field_vars) == 0:
-            logging.debug("Automatically determining field variables")
-
-            field_vars = determine_field_vars(ds)
-        else:
+        if field_vars:=kwargs["field_vars"]:
             # There may be regex to process
             field_vars = match_regex_list(field_vars, ds.variables)
+        else:
+            logging.debug("Automatically determining field variables")
+            field_vars = determine_field_vars(ds)
 
         # Shared and excluded vars shouldn't be field_vars
         logging.debug("Removing shared variables from list of field variables")
@@ -303,7 +320,7 @@ def process_file(
         logging.debug(f"List of field vars is: {field_vars}")
 
         # Build the mapping dict for renaming, e.g. {"time_0: "time"}
-        if rename_regex:
+        if rename_regex:=kwargs["rename_regex"]:
             rename_dict = build_rename_dict(ds, rename_regex)
         else:
             rename_dict = {}
@@ -355,12 +372,16 @@ def process_file(
             ds_v = ds_v[vars_in_order]
 
             # Update the history attribute
-            if update_history:
+            if kwargs["update_history"]:
                 new_history = build_history()
                 logging.debug(f"Updating history attribute with: {new_history}")
                 update_history_attr(ds_v, new_history)
 
-            if output_dir:
+            # Fix cell_methods
+            if kwargs["fix_cell_methods"]:
+                fix_cell_methods(ds_v, v)
+
+            if output_dir:=kwargs["output_dir"]:
                 output_dir = Path(output_dir)
             else:
                 output_dir = filepath.parent
@@ -370,14 +391,14 @@ def process_file(
                 ds=ds_v,
                 field_name=v,
                 input_filepath=filepath,
-                esm1p6_filename=esm1p6_filename,
-                file_freq=file_freq,
+                esm1p6_filename=kwargs["use_esm1p6_filenames"],
+                file_freq=kwargs["file_freq"],
             )
             output_filepath = output_dir / filename
             logging.debug(f"Output filepath is {output_filepath}")
 
             # Write to file
-            if not overwrite and output_filepath.exists():
+            if not kwargs["overwrite"] and output_filepath.exists():
                 logging.error(f"Output file already exists - {output_filepath}")
                 logging.error("Use --overwrite to overwrite existing files")
 
@@ -471,6 +492,13 @@ def arg_parse(cmdline_args=None):
         "If this option is not given {field}_{original_filename} will be used."
     )
     parser.add_argument(
+        "--fix-cell-methods",
+        action="store_true",
+        help="Correct cell_methods by adding 'time: point' to cell_methods "
+        "for variables that have 'time' but not 'time_bnds' and no other "
+        "'time' cell_methods."
+    )
+    parser.add_argument(
         "--file-freq",
         default="1yr",
         help="Specify the frequency of the files (not the data), e.g. if each "
@@ -488,9 +516,12 @@ def arg_parse(cmdline_args=None):
     parser.add_argument(
         "--overwrite", action="store_true", help="Overwrite existing files"
     )
+    # By default update the history attr
+    # To avoid passing around a negative store_false and rename this arg
     parser.add_argument(
         "--dont-update-history",
-        action="store_true",
+        action="store_false",
+        dest="update_history",
         help="Disable automatic update of history attribute"
     )
     parser.add_argument(
@@ -542,18 +573,7 @@ def main():
         raise ValueError("No files to process.")
 
     for f in args.filepaths:
-        process_file(
-            f,
-            field_vars=args.field_vars,
-            shared_vars=args.shared_vars,
-            excluded_vars=args.excluded_vars,
-            rename_regex=args.rename_regex,
-            output_dir=args.output_dir,
-            overwrite=args.overwrite,
-            update_history=not args.dont_update_history,
-            esm1p6_filename=args.use_esm1p6_filenames,
-            file_freq=args.file_freq,
-        )
+        process_file(f, **vars(args))
 
 
 if __name__ == "__main__":

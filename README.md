@@ -73,6 +73,8 @@ options:
                         access-esm1p6.{component}.{dimensions}.{field}.{freq}.{time_cell_method}.{datestamp}.nc
                         splitnc will attempt to deduce all the components of the filename. If this option is not given
                         {field}_{original_filename} will be used.
+  --fix-cell-methods    Correct cell_methods by adding 'time: point' to cell_methods for variables that have 'time' but
+                        not 'time_bnds' and no other 'time' cell_methods.
   --file-freq FILE_FREQ
                         Specify the frequency of the files (not the data), e.g. if each file contains a month of data
                         then the file-frequency is '1mon'. Used to determine the resolution of the timestamp for ESM1.6

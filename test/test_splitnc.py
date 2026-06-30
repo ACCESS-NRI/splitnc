@@ -6,7 +6,7 @@ import re
 import xarray as xr
 
 from common import runcmd, make_nc
-from splitnc import determine_field_vars, build_filename
+from splitnc import determine_field_vars, build_filename, fix_cell_methods
 
 
 @pytest.mark.parametrize(
@@ -461,3 +461,55 @@ def test_build_filenames(tmp_path, use_esm1p6, cdl_file, field, output_freq, exp
         assert actual_filename == expected_filename
 
         os.remove(ncfile)
+
+
+@pytest.mark.parametrize(
+    "time, time_bnds, cell_methods, expected_cell_methods",
+    [
+        # Cases where cell_methods shouldn't be updated
+        (False, False, "", ""),
+        (False, False, None, None),
+        (False, False, "some other cell_method", "some other cell_method"),
+        (True, True, "", ""),
+        (True, True, None, None),
+        (True, True, "some other cell_method", "some other cell_method"),
+        (True, False, "time: mean", "time: mean"),
+        (True, False, "some cell_method with time", "some cell_method with time"),
+        # Cases where cell_methods should be updated
+        (True, False, "", "time: point"),
+        (True, False, None, "time: point"),
+        (True, False, "some other cell_method", "some other cell_method time: point"),
+    ]
+)
+def test_fix_time_cell_methods(time, time_bnds, cell_methods, expected_cell_methods):
+    varname = "var"
+    # Create a dataset to work with, details aren't important
+    data = {
+        varname: (["time"], [1, 2, 3]),
+    }
+    coords = {}
+
+    if time:
+        coords["time"] = ("time", [4.5, 5.5, 6.5])
+    if time_bnds:
+        coords["time_bnds"] = (["time", "bnds"], [[4, 5], [5, 6], [6, 7]])
+
+    ds = xr.Dataset(
+        data_vars = data,
+        coords=coords,
+    )
+
+    if time_bnds:
+        ds['time'].attrs["bounds"] = "time_bnds"
+
+    if cell_methods is not None:
+        ds[varname].attrs["cell_methods"] = cell_methods
+
+    # Call fix_cell_methods
+    fix_cell_methods(ds, varname)
+
+    # Check the result
+    if expected_cell_methods is not None:
+        assert ds[varname].attrs["cell_methods"] == expected_cell_methods
+    else:
+        assert "cell_methods" not in ds[varname].attrs.keys()
