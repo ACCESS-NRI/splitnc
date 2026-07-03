@@ -13,7 +13,6 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-        script-dir: ["splitnc"]
 
     steps:
       - name: Install netcdf-bin
@@ -28,7 +27,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: cd ${{ matrix.script-dir }}; pip install .[test]
+        run: pip install .[test]
 
       - name: Run tests
-        run: cd ${{ matrix.script-dir }}; python -m pytest
+        run: python -m pytest
