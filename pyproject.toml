@@ -1,6 +1,6 @@
 [project]
 name = "splitnc"
-version = "v0.11"
+version = "v0.11.1"
 authors = [
     {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
 ]
@@ -9,6 +9,7 @@ maintainers = [
 ]
 description = "Split multi-field ESM1.6 files into single-field files"
 readme = "README.md"
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
 dependencies = [
     "netcdf4",
