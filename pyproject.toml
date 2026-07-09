@@ -1,11 +1,11 @@
 [project]
 name = "splitnc"
-version = "v0.11.1"
+version = "v0.11.1.1"
 authors = [
     {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
 ]
 maintainers = [
-    {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
+    {name = "access-nri", email="joshua.torrance@anu.edu.au"},
 ]
 description = "Split multi-field ESM1.6 files into single-field files"
 readme = "README.md"
