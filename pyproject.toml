@@ -1,6 +1,6 @@
 [project]
 name = "splitnc"
-version = "v0.1"
+version = "v0.11"
 authors = [
     {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
 ]
