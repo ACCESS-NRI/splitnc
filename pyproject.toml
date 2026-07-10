@@ -34,7 +34,8 @@ splitnc = "splitnc:main"
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools",
+    "setuptools>=80",
+    "setuptools-scm[simple]>=8"
 ]
 
 [tool.pytest.ini_options]
