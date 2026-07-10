@@ -1,6 +1,6 @@
 [project]
 name = "splitnc"
-version = "v0.1"
+dynamic = ["version"]
 authors = [
     {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
     {name = "Spencer Wong", email="spencer.wong@anu.edu.au"},
