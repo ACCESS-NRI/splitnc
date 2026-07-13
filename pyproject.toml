@@ -1,14 +1,18 @@
 [project]
 name = "splitnc"
-version = "v0.1"
+dynamic = ["version"]
 authors = [
     {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
+    {name = "Spencer Wong", email="spencer.wong@anu.edu.au"},
+    {name = "Davide Marchegiani", email="davide.marchegiani@anu.edu.au"},
 ]
 maintainers = [
-    {name = "Joshua Torrance", email="joshua.torrance@anu.edu.au"},
+    {name="ACCESS-NRI", email="access.nri@anu.edu.au"},
 ]
 description = "Split multi-field ESM1.6 files into single-field files"
 readme = "README.md"
+license = "Apache-2.0"
+keywords = ["ACCESS-NRI", "netcdf"]
 requires-python = ">=3.9"
 dependencies = [
     "netcdf4",
@@ -22,13 +26,17 @@ dependencies = [
         "xarray>2025.1.2",
     ]
 
+[project.urls]
+    Repository = "https://github.com/ACCESS-NRI/splitnc"
+
 [project.scripts]
 splitnc = "splitnc:main"
 
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-    "setuptools",
+    "setuptools>=80",
+    "setuptools-scm[simple]>=8"
 ]
 
 [tool.pytest.ini_options]
