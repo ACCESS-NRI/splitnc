@@ -131,7 +131,8 @@ def _build_datestamp(ds, field_name, file_freq):
 
     # Calculate the middle point
     first, last = time_arr.min(), time_arr.max()
-    datestamp_dt = (first + (last - first) / 2).dt
+    datestamp_dt = (first + (last - first) / 2).compute().dt
+        # Need to .compute when using open_mfdataset
 
     return "." + datestamp_dt.strftime(fmt).data.flatten()[0]
 

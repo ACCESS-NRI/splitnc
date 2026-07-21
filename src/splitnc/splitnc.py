@@ -272,7 +272,67 @@ def build_filename(ds, field_name, input_filepath, esm1p6_filename=False, file_f
         return f"{field_name}_{input_filepath.name}"
 
 
-def process_file(filepath, **kwargs):
+def group_filepaths(filepaths, group_regex):
+    r"""
+    Group together files from the list of filepaths that match the given regex
+    with only the portion in the capture group "wild" varying.
+
+    E.g. if files follow the patterns
+    - aiihca.pa-YYYYMM_mon.nc and
+    - aiihca.pe-YYYYMM_dai.nc
+    use "aiihca\.p[ae]-\d{4}(?P<wild>\d{2})_(mon|dai)\.nc" to group together
+    months for each year and freq. Grouped filepaths will be returned as a list
+
+    Any filepath that doesn't match the regex will be returned alone, i.e. in a
+    group of length 1.
+
+    Returns a list of lists of filepath strings
+    """
+    grouped_filepaths = []
+    while len(filepaths) > 0:
+        f = filepaths[0]
+        if m:=re.search(group_regex, f):
+            # We need to know which indices the "wild" group has in the filepath
+            wild_span = m.span("wild")
+            
+            # Replace the wild match in the orginal string with a wild regex
+            # Use double {{ }} to escape them in f-strings
+            group_regx = re.compile(m.string[:wild_span[0]] + f".{{{len(m['wild'])}}}" + m.string[wild_span[1]:])
+
+            # Get the filepaths that match the regex and remove them from the filepaths list
+            group_list = [fp for fp in filepaths if group_regx.search(fp)]
+            filepaths = [fp for fp in filepaths if not group_regx.search(fp)]
+        else:
+            # If the regex doesn't match the group regex treat it as a solo group
+            group_list = [filepaths.pop(0)]
+
+        grouped_filepaths.append(group_list)
+
+    return grouped_filepaths
+
+
+def process_files(**kwargs):
+    # Prepare the filepath list
+    filepaths_list = kwargs.pop("filepaths")
+    if input_group_regex:=kwargs['input_group_regex']:
+        logging.debug(f"Grouping filepaths according to regex: {input_group_regex}")
+
+        # Group files together according to the input_file_date_regex
+        filepaths_list = group_filepaths(filepaths_list, input_group_regex)
+    else:
+        # Treat every filepath as a size 1 group
+        filepaths_list = [[f] for f in filepaths_list]
+    
+    logging.debug("Filepaths groups as follows:\n" + "\n".join(
+        [f"{i}: {filepaths}" for i, filepaths in enumerate(filepaths_list)]
+    ))
+
+    # Process each filepath group
+    for filepaths in filepaths_list:
+        process_filegroup(filepaths, **kwargs)
+
+
+def process_filegroup(filepaths, **kwargs):
     # Define default kwargs and update them with kwargs
     kwargs = {
         "excluded_vars": [],
@@ -287,12 +347,36 @@ def process_file(filepath, **kwargs):
         "overwrite": False,
     } | kwargs
 
-    logging.debug(f"Processing {filepath}")
-    filepath = Path(filepath)
+    logging.debug(f"Processing {filepaths}")
+
+    filepaths = [Path(f) for f in filepaths]
+    
+    # xarray drops .encoding when using open_mfdataset with more than one file
+    # So save the encodings when loading and reapply
+    encoding_map = {}
+    def save_encoding(ds):
+        for v in ds.variables:
+            enc = ds[v].encoding
+            
+            # Remove source (i.e. filename) from encoding, those will never match
+            del enc['source']
+
+            if v in encoding_map and encoding_map[v] != enc:
+                raise ValueError(f"Encodings for {v} doesn't match across all files: {enc}")
+
+            encoding_map[v] = enc
+
+        return ds
 
     # Use cftime to suppress warnings
     decoder = xr.coders.CFDatetimeCoder(time_unit='us')
-    with xr.open_dataset(filepath, decode_times=decoder) as ds:
+    with xr.open_mfdataset(filepaths, decode_times=decoder, combine="nested", 
+        compat="no_conflicts", join="outer", preprocess=save_encoding) as ds:
+        # Reapply the saved encodings if they're missing
+        for v in ds.variables:
+            if not ds[v].encoding:
+                ds[v].encoding = encoding_map[v]
+
         # Resolve any regex in the excluded_vars list
         if excluded_vars:=kwargs["excluded_vars"]:
             excluded_vars = match_regex_list(excluded_vars, ds.variables)
@@ -381,16 +465,17 @@ def process_file(filepath, **kwargs):
             if kwargs["fix_cell_methods"]:
                 fix_cell_methods(ds_v, v)
 
+            # Output path construction assumes the first path can be used
             if output_dir:=kwargs["output_dir"]:
                 output_dir = Path(output_dir)
             else:
-                output_dir = filepath.parent
+                output_dir = filepaths[0].parent
 
             # Build the output filepath
             filename = build_filename(
                 ds=ds_v,
                 field_name=v,
-                input_filepath=filepath,
+                input_filepath=filepaths[0],
                 esm1p6_filename=kwargs["use_esm1p6_filenames"],
                 file_freq=kwargs["file_freq"],
             )
@@ -509,6 +594,15 @@ def arg_parse(cmdline_args=None):
         "Defaults to '1yr'."
     )
     parser.add_argument(
+        "--input-group-regex",
+        help="Specify a regex that will be used to group a subset of the input "
+        "into a single set. E.g. group together 12 input monthly files to "
+        "a single year of output. Use a named capture group \"wild\" to "
+        "specify the portion of the filename that varies. E.g. to group monthly "
+        "files with this pattern - \"aiihca.pa-YYYYMM_mon.nc\" - use the regex "
+        r"\"aiihca\.pa-\d{4}(?P<wild>\d{2})_mon\.nc\"."
+    )
+    parser.add_argument(
         "--output-dir",
         help="Output directory for the processed files. If not given output "
         "files will be placed in the same directory as the original file.",
@@ -541,9 +635,10 @@ def arg_parse(cmdline_args=None):
     args = parser.parse_args(args=cmdline_args)
 
     # File paths may need flattened since glob was used
-    args.filepaths = [
+    # Sort the list to ensure repeatable behaviour
+    args.filepaths = sorted([
         filepath for glob_list in args.filepaths for filepath in glob_list
-    ]
+    ])
 
     # If the command line yaml was supplied use the contents instead of argv
     if args.command_line_file:
@@ -572,8 +667,7 @@ def main():
         logging.error("No files to process.")
         raise ValueError("No files to process.")
 
-    for f in args.filepaths:
-        process_file(f, **vars(args))
+    process_files(**vars(args))
 
 
 if __name__ == "__main__":
