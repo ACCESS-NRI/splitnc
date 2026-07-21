@@ -6,7 +6,7 @@ import re
 import xarray as xr
 
 from common import runcmd, make_nc
-from splitnc import determine_field_vars, build_filename, fix_cell_methods
+from splitnc import determine_field_vars, build_filename, fix_cell_methods, group_filepaths
 
 
 @pytest.mark.parametrize(
@@ -238,6 +238,69 @@ def test_splitnc(tmp_path, cdl_file, cmd_options, rename_regex, excluded_vars,
     assert len(output_files) == num_nc_files
 
     os.remove(ncfile)
+
+
+@pytest.mark.parametrize(
+    "cdl_files,cmd_options,excluded_vars,field_regex,num_nc_files",
+    [
+        (
+            # Test two monthly ice file with esm1.6 filenames
+            ["iceh-1monthly-mean_2345-01.cdl", "iceh-1monthly-mean_2345-02.cdl"],
+            r"--shared-vars uarea,tmask,tarea --excluded-vars VGRDb,VGRDi,VGRDs --use-esm1p6-filenames --input-group-regex 'iceh-1monthly-mean_\d{4}-(?P<wild>\d{2})\.nc'",
+            ["VGRDb", "VGRDi", "VGRDs"],
+            r"(ai|dv|si).+",
+            53,
+        ),
+        (
+            # Test a monthly atmosphere file (which will have extra time axes)
+            [ "aiihca.pa-234501_mon.cdl", "aiihca.pa-234502_mon.cdl"],
+            r"--shared-vars latitude_longitude --rename-regex '(?P<newname>.+)_\d+' --input-group-regex 'aiihca\.pa-\d{4}(?P<wild>\d{2})_mon\.nc'",
+            None,
+            "fld_.+",
+            218,
+        ),
+    ]
+)
+def test_file_grouping(tmp_path, cdl_files, cmd_options, excluded_vars,
+    field_regex, num_nc_files):
+    """
+    Test grouping of files, e.g. 12 monthly files into a yearly file or in this
+    case 2 monthly files into a 2-month long file
+    """
+    # Create a file to test on
+    ncfiles = [make_nc(tmp_path, f"test/data/{cdl_file}") for cdl_file in cdl_files]
+
+    output_dir = tmp_path / "single_field"
+    
+    cmd_options += f" --output-dir {output_dir} {' '.join(ncfiles)}"
+
+    cmd = f"splitnc {cmd_options}"
+
+    # Attempt to split the file
+    runcmd(cmd)
+
+    # Check the output files
+    output_files = list(output_dir.glob("*.nc"))
+
+    # Check the number of files
+    assert len(output_files) == num_nc_files
+
+    # Check all the time values in the orginal files are in the new files
+    # Get all the times as a single xarray object
+    decoder = xr.coders.CFDatetimeCoder(use_cftime=True)
+    ds_in = xr.open_mfdataset(ncfiles, decode_times=decoder, combine="nested", compat="no_conflicts", join="outer")
+    for output_file in output_files:
+        with xr.open_dataset(output_file, decode_times=decoder) as ds_out:
+            output_times = ds_out['time']
+
+            # Atmos file have multiple time axes - need to figure out which
+            # Use the field regex to figure out which is data variable
+            v = [v for v in ds_out.variables if re.fullmatch(field_regex, v)][0]
+            # Look for a time* dimension on the matching data variable in input
+            time_var = [d for d in ds_in[v].dims if 'time' in d][0]
+            input_times = ds_in[time_var]
+
+            assert all(output_times.data == input_times.data)
 
 
 @pytest.mark.parametrize(
@@ -513,3 +576,65 @@ def test_fix_time_cell_methods(time, time_bnds, cell_methods, expected_cell_meth
         assert ds[varname].attrs["cell_methods"] == expected_cell_methods
     else:
         assert "cell_methods" not in ds[varname].attrs.keys()
+
+
+@pytest.mark.parametrize(
+    "glob_regex, filepath_list, expected_lists",
+    [
+        # Each group has only one item
+        (r"\w(?P<wild>\d)", ["a1", "b1", "c1", "d1"], [["a1"], ["b1"], ["c1"], ["d1"]]),
+        # Each group has 2 items
+        (r"\w(?P<wild>\d)", ["a1", "a2", "b1", "b2"], [["a1", "a2"], ["b1", "b2"]]),
+        # 3 groups but only two match the regex
+        (r"[ab](?P<wild>\d)", ["a1", "a2", "b1", "b2", "c1", "c2"], [["a1", "a2"], ["b1", "b2"], ["c1"], ["c2"]]),
+        # Extra capture groups
+        (
+            r"(x|ex|y)-[abc](?P<wild>\d)",
+            ["x-a1", "x-a2", "ex-b1", "ex-b2", "y-c1", "y-c2"],
+            [["x-a1", "x-a2"], ["ex-b1", "ex-b2"], ["y-c1", "y-c2"]]
+        ),
+        # Out of order
+        (r"[ab](?P<wild>\d)", ["c1", "b2", "a1", "a2", "c2", "b1"], [["c1"], ["b2", "b1"], ["a1", "a2"], ["c2"]]),
+        # No regex matches
+        (r"no matches", ["a1", "b1", "c1", "d1"], [["a1"], ["b1"], ["c1"], ["d1"]]),
+        (r"no matches", ["a1", "a2", "b1", "b2"], [["a1"], ["a2"], ["b1"], ["b2"]]),
+        # Files with parent directories absent from regex
+        (
+            r"\w(?P<wild>\d)",
+            ["/rootdir/a1", "/rootdir/a2", "/rootdir/b1", "/rootdir/b2"],
+            [["/rootdir/a1", "/rootdir/a2"], ["/rootdir/b1", "/rootdir/b2"]]
+        ),
+        # Files with parent directories where files in different dirs should not be grouped
+        (
+            r"out\d/\w(?P<wild>\d)",
+            ["/root/out1/a1", "/root/out1/a2", "/root/out1/b1", "/root/out1/b2",
+             "/root/out2/a3", "/root/out2/a4", "/root/out2/b3", "/root/out2/b4"],
+            [["/root/out1/a1", "/root/out1/a2"], ["/root/out1/b1", "/root/out1/b2"],
+             ["/root/out2/a3", "/root/out2/a4"], ["/root/out2/b3", "/root/out2/b4"]]
+        ),
+        # Real filenames, two groups of 12 files
+        (
+            r"aiihca\.p[ae]-\d{4}(?P<wild>\d{2})_(mon|dai)\.nc",
+            ["aiihca.pa-234501_mon.nc", "aiihca.pa-234502_mon.nc", "aiihca.pa-234503_mon.nc",
+             "aiihca.pa-234504_mon.nc", "aiihca.pa-234505_mon.nc", "aiihca.pa-234506_mon.nc",
+             "aiihca.pa-234507_mon.nc", "aiihca.pa-234508_mon.nc", "aiihca.pa-234509_mon.nc",
+             "aiihca.pa-234510_mon.nc", "aiihca.pa-234511_mon.nc", "aiihca.pa-234512_mon.nc",
+             "aiihca.pe-234501_dai.nc", "aiihca.pe-234502_dai.nc", "aiihca.pe-234503_dai.nc",
+             "aiihca.pe-234504_dai.nc", "aiihca.pe-234505_dai.nc", "aiihca.pe-234506_dai.nc",
+             "aiihca.pe-234507_dai.nc", "aiihca.pe-234508_dai.nc", "aiihca.pe-234509_dai.nc",
+             "aiihca.pe-234510_dai.nc", "aiihca.pe-234511_dai.nc", "aiihca.pe-234512_dai.nc"],
+            [["aiihca.pa-234501_mon.nc", "aiihca.pa-234502_mon.nc", "aiihca.pa-234503_mon.nc",
+              "aiihca.pa-234504_mon.nc", "aiihca.pa-234505_mon.nc", "aiihca.pa-234506_mon.nc",
+              "aiihca.pa-234507_mon.nc", "aiihca.pa-234508_mon.nc", "aiihca.pa-234509_mon.nc",
+              "aiihca.pa-234510_mon.nc", "aiihca.pa-234511_mon.nc", "aiihca.pa-234512_mon.nc"],
+             ["aiihca.pe-234501_dai.nc", "aiihca.pe-234502_dai.nc", "aiihca.pe-234503_dai.nc",
+              "aiihca.pe-234504_dai.nc", "aiihca.pe-234505_dai.nc", "aiihca.pe-234506_dai.nc",
+              "aiihca.pe-234507_dai.nc", "aiihca.pe-234508_dai.nc", "aiihca.pe-234509_dai.nc",
+              "aiihca.pe-234510_dai.nc", "aiihca.pe-234511_dai.nc", "aiihca.pe-234512_dai.nc"]]
+        ),
+    ]
+)
+def test_filepath_grouping(glob_regex, filepath_list, expected_lists):
+    actual_lists = group_filepaths(filepath_list, glob_regex)
+
+    assert actual_lists == expected_lists

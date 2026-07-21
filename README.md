@@ -20,6 +20,30 @@ If there are ancillary fields that should only be present in only some of the ou
 
 Example of these variables are the `latitude_longitude` found in atmosphere files or the `uarea`, `tmask`, `tarea`, `VGRDb`, `VGRDi`, `VGRDs` variables from ice files.
 
+## Grouping Input Files
+
+Input file paths can be grouped together using the `--input-group-regex INPUT_GROUP_REGEX` command line option.
+This can be used for example to group together 12 monthly input files into one yearly output file per variable.
+This option uses a regex with a named capture group "wild" to identify the portion of the files that varies across the group.
+For example, to group togther these two sets of monthly files into yearly output files:
+```
+aiihca.pa-234501_mon.nc  aiihca.pe-234501_dai.nc
+aiihca.pa-234502_mon.nc  aiihca.pe-234502_dai.nc
+aiihca.pa-234503_mon.nc  aiihca.pe-234503_dai.nc
+aiihca.pa-234504_mon.nc  aiihca.pe-234504_dai.nc
+aiihca.pa-234505_mon.nc  aiihca.pe-234505_dai.nc
+aiihca.pa-234506_mon.nc  aiihca.pe-234506_dai.nc
+aiihca.pa-234507_mon.nc  aiihca.pe-234507_dai.nc
+aiihca.pa-234508_mon.nc  aiihca.pe-234508_dai.nc
+aiihca.pa-234509_mon.nc  aiihca.pe-234509_dai.nc
+aiihca.pa-234510_mon.nc  aiihca.pe-234510_dai.nc
+aiihca.pa-234511_mon.nc  aiihca.pe-234511_dai.nc
+aiihca.pa-234512_mon.nc  aiihca.pe-234512_dai.nc
+```
+use the regex `aiihca\.p[ae]-\d{4}(?P<wild>\d{2})_(mon|dai)\.nc` which uses the `wild` capture group to match the month.
+
+Any file paths that don't match the regex will be processed individually.
+
 ## Config File
 
 The `-c`/`--command-line-file` option can be used to supply a filepath to a file that contains command line options.
@@ -80,6 +104,11 @@ options:
                         then the file-frequency is '1mon'. Used to determine the resolution of the timestamp for ESM1.6
                         filenames. Follows the ACCESS frequency vocabulary (e.g. '1yr', '1mon', '1day', '1hr'), any
                         unrecognised frequency will use the full timestamp. Defaults to '1yr'.
+  --input-group-regex INPUT_GROUP_REGEX
+                        Specify a regex that will be used to group a subset of the input into a single set. E.g. group together 12
+                        input monthly files to a single year of output. Use a named capture group "wild" to specify the portion of
+                        the filename that varies. E.g. to group monthly files with this pattern - "aiihca.pa-YYYYMM_mon.nc" - use
+                        the regex \"aiihca\.pa-\d{4}(?P<wild>\d{2})_mon\.nc\".
   --output-dir OUTPUT_DIR
                         Output directory for the processed files. If not given output files will be placed in the same
                         directory as the original file.
