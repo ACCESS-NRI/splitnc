@@ -358,8 +358,15 @@ def process_filegroup(filepaths, **kwargs):
         for v in ds.variables:
             enc = ds[v].encoding
             
-            # Remove source (i.e. filename) from encoding, those will never match
-            del enc['source']
+            # Remove some keys from the encoding as these will not always match
+            # and aren't important here
+            keys_to_delete = ['source', 'chunksizes', 'preferred_chunks', 'original_shape']
+            for del_key in keys_to_delete:
+                try:
+                    del enc[del_key]
+                except KeyError:
+                    # If the key isn't there do nothing
+                    pass
 
             if v in encoding_map and encoding_map[v] != enc:
                 raise ValueError(f"Encodings for {v} doesn't match across all files: {enc}")
