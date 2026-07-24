@@ -157,3 +157,17 @@ def build_esm1p6_filename(ds, field_name, input_filepath, esm1p6_filename=False,
         raise
 
     return template.format(**d)
+
+
+def preprocess_esm1p6_files(ds):
+    """
+    Prepare ESM1.6 files before grouping.
+    - Round off surface_altitude in atmos files to remove variation due to numerical issues
+    """
+    if 'surface_altitude' in ds:
+        # Surface altitude is measured in meters
+        # surface_altitude in different files can vary down around 10^-10
+        # Round it off to 4 decimal places
+        ds['surface_altitude'] = ds['surface_altitude'].round(4)
+
+    return ds

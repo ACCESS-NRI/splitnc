@@ -10,7 +10,7 @@ import sys
 
 import xarray as xr
 
-from splitnc.esm1p6 import build_esm1p6_filename
+from splitnc.esm1p6 import build_esm1p6_filename, preprocess_esm1p6_files
 
 
 def determine_field_vars(ds):
@@ -368,10 +368,18 @@ def process_filegroup(filepaths, **kwargs):
 
         return ds
 
+    def preprocess(ds):
+        ds = save_encoding(ds)
+
+        if kwargs['use_esm1p6_filenames']:
+            ds = preprocess_esm1p6_files(ds)
+
+        return ds
+
     # Use cftime to suppress warnings
     decoder = xr.coders.CFDatetimeCoder(time_unit='us')
     with xr.open_mfdataset(filepaths, decode_times=decoder, combine="nested", 
-        compat="no_conflicts", join="outer", preprocess=save_encoding) as ds:
+        compat="no_conflicts", join="outer", preprocess=preprocess) as ds:
         # Reapply the saved encodings if they're missing
         for v in ds.variables:
             if not ds[v].encoding:
@@ -574,7 +582,8 @@ def arg_parse(cmdline_args=None):
         help="Use the ESM1.6 filename pattern for the output files: "
         "access-esm1p6.{component}.{dimensions}.{field}.{freq}.{time_cell_method}.{datestamp}.nc"
         " splitnc will attempt to deduce all the components of the filename. "
-        "If this option is not given {field}_{original_filename} will be used."
+        "If this option is not given {field}_{original_filename} will be used. "
+        "Note: This option also enables special preprocessing for ESM1.6 files."
     )
     parser.add_argument(
         "--fix-cell-methods",
