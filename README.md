@@ -97,6 +97,7 @@ options:
                         access-esm1p6.{component}.{dimensions}.{field}.{freq}.{time_cell_method}.{datestamp}.nc
                         splitnc will attempt to deduce all the components of the filename. If this option is not given
                         {field}_{original_filename} will be used.
+                        Note: This option also enables special preprocessing for ESM1.6 files.
   --fix-cell-methods    Correct cell_methods by adding 'time: point' to cell_methods for variables that have 'time' but
                         not 'time_bnds' and no other 'time' cell_methods.
   --file-freq FILE_FREQ
