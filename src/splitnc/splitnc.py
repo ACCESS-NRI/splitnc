@@ -425,6 +425,9 @@ def process_filegroup(filepaths, **kwargs):
             rename_dict = {}
         logging.debug(f"Rename dict is {rename_dict}")
 
+        if len(field_vars) == 0:
+            logging.warning(f"No field variables to process for {filepaths}")
+
         for v in field_vars:
             # Get the list of vars to keep for this field
             logging.debug(f"Determining dependent variables for field variable {v}")
