@@ -131,7 +131,8 @@ def _build_datestamp(ds, field_name, file_freq):
 
     # Calculate the middle point
     first, last = time_arr.min(), time_arr.max()
-    datestamp_dt = (first + (last - first) / 2).dt
+    datestamp_dt = (first + (last - first) / 2).compute().dt
+        # Need to .compute when using open_mfdataset
 
     return "." + datestamp_dt.strftime(fmt).data.flatten()[0]
 
@@ -156,3 +157,17 @@ def build_esm1p6_filename(ds, field_name, input_filepath, esm1p6_filename=False,
         raise
 
     return template.format(**d)
+
+
+def preprocess_esm1p6_files(ds):
+    """
+    Prepare ESM1.6 files before grouping.
+    - Round off surface_altitude in atmos files to remove variation due to numerical issues
+    """
+    if 'surface_altitude' in ds:
+        # Surface altitude is measured in meters
+        # surface_altitude in different files can vary down around 10^-10
+        # Round it off to 4 decimal places
+        ds['surface_altitude'] = ds['surface_altitude'].round(4)
+
+    return ds
