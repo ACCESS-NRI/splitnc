@@ -19,7 +19,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             r"(?P<newname>.+)_\d+",
             None,
             "fld_.+",
-            218,
+            32,
         ),
         (
             # Test a monthly atmosphere file with esm1.6 filenames
@@ -28,7 +28,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             r"(?P<newname>.+)_\d+",
             None,
             "fld_.+",
-            218,
+            32,
         ),
         (
             # Test a daily atmosphere file
@@ -37,7 +37,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             r"(?P<newname>.+)_\d+",
             None,
             "fld_.+",
-            36,
+            10,
         ),
         (
             # Test a daily atmosphere file with esm1.6 filenames
@@ -46,7 +46,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             r"(?P<newname>.+)_\d+",
             None,
             "fld_.+",
-            36,
+            10,
         ),
         (
             # Test a monthly ice file
@@ -55,7 +55,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             None,
             ["VGRDb", "VGRDi", "VGRDs"],
             "(ai|dv|si).+",
-            53,
+            7,
         ),
         (
             # Test a monthly ice file with esm1.6 filenames
@@ -64,7 +64,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             None,
             ["VGRDb", "VGRDi", "VGRDs"],
             "(ai|dv|si).+",
-            53,
+            7,
         ),
         (
             # Test a daily ice file (use a regex for exluded-vars here)
@@ -73,7 +73,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             None,
             ["VGRD."],
             "(ai|dv|si).+",
-            25,
+            6,
         ),
         (
             # Test a daily ice file (use a regex for exluded-vars here) with esm1.6 filenames
@@ -82,7 +82,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             None,
             ["VGRD."],
             "(ai|dv|si).+",
-            25,
+            6,
         ),
         (
             # Test a monthly atmosphere file with a regex for shared-vars
@@ -92,13 +92,13 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             r"(?P<newname>.+)_\d+",
             None,
             "fld_.+",
-            218,
+            32,
         ),
         (
             # Test a monthly atmosphere file with a single field with coords that need renaming
             # Previously when the renaming would miss the cell_methods & coordinates
             "aiihca.pa-234501_mon.cdl",
-            "--field-vars fld_s03i257 --shared-vars latitude_longitude --rename-regex {rename_regex}",
+            "--field-vars fld_s03i851 --shared-vars latitude_longitude --rename-regex {rename_regex}",
             r"(?P<newname>.+)_\d+",
             None,
             "fld_.+",
@@ -125,7 +125,7 @@ from splitnc import determine_field_vars, build_filename, fix_cell_methods
             r"(?P<newname>.+)_\d+",
             None,
             "fld_s03i23.+",
-            6,
+            4,
         ),
         (
             # Test a simple file with a trailing space in the coords
@@ -320,9 +320,9 @@ def test_determine_field_vars(tmp_path, cdl_file, field_regex):
         (
             # Test a daily atmos 3D field
             "aiihca.pe-234501_dai.cdl",
-            "fld_s30i207",
+            "fld_s30i301",
             "1yr",
-            "access-esm1p6.um7p3.3d.fld_s30i207.1day.mean.2345.nc",
+            "access-esm1p6.um7p3.3d.fld_s30i301.1day.mean.2345.nc",
         ),
         (
             # Test a daily ice 3D field
