@@ -215,14 +215,14 @@ def build_rename_dict(ds, rename_regex):
     return rename_dict
 
 
-def build_history():
+def build_history(filepaths):
     time_stamp = datetime.now(timezone.utc).isoformat(timespec='seconds')
     python_exe = f"python{python_version()}"
 
     # The list of files given on the commandline is not needed in the history
-    args = " ".join(sys.argv)
+    args = " ".join([arg for arg in sys.argv if arg not in filepaths])
   
-    return f"{time_stamp} : splitnc (https://github.com/ACCESS-NRI/esm1.6-scripts) : {python_exe} {args}"
+    return f"{time_stamp} : splitnc (https://github.com/ACCESS-NRI/splitnc) : {python_exe} {args}"
 
 
 def update_history_attr(ds, new_history):
@@ -339,7 +339,7 @@ def process_filegroup(filepaths, **kwargs):
         "shared_vars": [],
         "field_vars": None,
         "rename_regex": None,
-        "update_history": True,
+        "update_history": False,
         "fix_cell_methods": False,
         "output_dir": False,
         "use_esm1p6_filenames": False,
@@ -474,8 +474,7 @@ def process_filegroup(filepaths, **kwargs):
             ds_v = ds_v[vars_in_order]
 
             # Update the history attribute
-            if kwargs["update_history"]:
-                new_history = build_history()
+            if new_history:=kwargs["update_history"]:
                 logging.debug(f"Updating history attribute with: {new_history}")
                 update_history_attr(ds_v, new_history)
 
@@ -686,7 +685,14 @@ def main():
         logging.error("No files to process.")
         raise ValueError("No files to process.")
 
-    process_files(**vars(args))
+    # Convert args to a dictionary
+    args = vars(args)
+
+    if args['update_history']:
+        # Save the new history (excluding filepaths)
+        args['update_history'] = build_history(args['filepaths'])
+
+    process_files(**args)
 
 
 if __name__ == "__main__":
