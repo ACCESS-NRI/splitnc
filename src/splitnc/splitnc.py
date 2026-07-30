@@ -482,6 +482,11 @@ def process_filegroup(filepaths, **kwargs):
             if kwargs["fix_cell_methods"]:
                 fix_cell_methods(ds_v, v)
 
+            # If time is present make it unlimited
+            if "time" in ds_v:
+                logging.debug("Setting time dimension to unlimited")
+                ds_v.encoding['unlimited_dims'] = ['time']
+
             # Output path construction assumes the first path can be used
             if output_dir:=kwargs["output_dir"]:
                 output_dir = Path(output_dir)
