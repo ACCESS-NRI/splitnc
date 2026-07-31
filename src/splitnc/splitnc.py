@@ -502,6 +502,12 @@ def process_filegroup(filepaths, **kwargs):
             else:
                 output_dir = filepaths[0].parent
 
+            # Load the file here as we see a noticeable performance improvement
+            # There may be an slight additional improvement before build_file
+            # rather than just before to_netcdf (build_filename needs to a load
+            # time)
+            ds_v.load()
+
             # Build the output filepath
             filename = build_filename(
                 ds=ds_v,
