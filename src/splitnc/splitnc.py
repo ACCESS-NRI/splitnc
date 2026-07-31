@@ -303,7 +303,7 @@ def group_filepaths(filepaths, group_regex):
             group_list = [fp for fp in filepaths if group_regx.search(fp)]
             filepaths = [fp for fp in filepaths if not group_regx.search(fp)]
         else:
-            # If the regex doesn't match the group regex treat it as a solo group
+            # If the filepath doesn't match the group regex treat it as a solo group
             group_list = [filepaths.pop(0)]
 
         grouped_filepaths.append(group_list)
