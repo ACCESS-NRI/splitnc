@@ -3,6 +3,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from glob import glob
 import logging
+import os
 from pathlib import Path
 from platform import python_version
 import re
@@ -520,15 +521,28 @@ def process_filegroup(filepaths, **kwargs):
             logging.debug(f"Output filepath is {output_filepath}")
 
             # Write to file
-            if not kwargs["overwrite"] and output_filepath.exists():
-                logging.error(f"Output file already exists - {output_filepath}")
-                logging.error("Use --overwrite to overwrite existing files")
+            if output_filepath.exists():
+                logging.warning(f"Output file already exists - {output_filepath}")
+                if kwargs["skip_existing"]:
+                    logging.warning("Skipping writing to existing file")
+                    continue
+                elif not kwargs["overwrite"]:
+                    logging.error("Use --overwrite or --skip-existing to continue")
 
-                raise FileExistsError(f"{output_filepath} already exists")
+                    raise FileExistsError(f"{output_filepath} already exists")
 
             logging.debug("Creating parent directory and writing to output file")
             output_filepath.parent.mkdir(parents=True, exist_ok=True)
-            ds_v.to_netcdf(output_filepath)
+
+            # Output the file to a .temp file first
+            output_filepath_temp = str(output_filepath) + ".temp"
+
+            logging.debug("Writing out to .temp file")
+            ds_v.to_netcdf(output_filepath_temp)
+
+            # Now move the .temp file to the final location
+            logging.debug("Renaming .temp file")
+            os.rename(output_filepath_temp, output_filepath)
 
 
 #### Main
@@ -644,6 +658,11 @@ def arg_parse(cmdline_args=None):
         "--output-dir",
         help="Output directory for the processed files. If not given output "
         "files will be placed in the same directory as the original file.",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip writing out existing files, takes precedance over `--overwrite`"
     )
     parser.add_argument(
         "--overwrite", action="store_true", help="Overwrite existing files"
