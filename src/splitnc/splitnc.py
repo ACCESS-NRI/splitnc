@@ -294,10 +294,19 @@ def group_filepaths(filepaths, group_regex):
         if m:=re.search(group_regex, f):
             # We need to know which indices the "wild" group has in the filepath
             wild_span = m.span("wild")
-            
-            # Replace the wild match in the orginal string with a wild regex
+
+            # Replace the wild match in the orginal string with the "wild" regex
+            # e.g. with regex "aiihca\.pa-\d{4}0(?P<wild>[1-6])_mon\.nc"
+            #    and filename "aiihca.pa-123401_mon.nc" then we want
+            #    to replace the wild match, "1" with the wild regex "[1-6]"
+            #    i.e. "aiihca.pa-12340([1-6])_mon.nc"
+
+            # Get the regex used in wild group
+            wild_pattern = r"\(\?P\<wild\>(.+?)\)"
+            wild_regex = re.search(wild_pattern, group_regex)[0]
+
             # Use double {{ }} to escape them in f-strings
-            group_regx = re.compile(m.string[:wild_span[0]] + f".{{{len(m['wild'])}}}" + m.string[wild_span[1]:])
+            group_regx = re.compile(m.string[:wild_span[0]] + wild_regex + m.string[wild_span[1]:])
 
             # Get the filepaths that match the regex and remove them from the filepaths list
             group_list = [fp for fp in filepaths if group_regx.search(fp)]

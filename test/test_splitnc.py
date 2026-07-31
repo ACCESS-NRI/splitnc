@@ -632,6 +632,18 @@ def test_fix_time_cell_methods(time, time_bnds, cell_methods, expected_cell_meth
               "aiihca.pe-234507_dai.nc", "aiihca.pe-234508_dai.nc", "aiihca.pe-234509_dai.nc",
               "aiihca.pe-234510_dai.nc", "aiihca.pe-234511_dai.nc", "aiihca.pe-234512_dai.nc"]]
         ),
+        # 12 months but regex only matches a portion
+        (
+            r"aiihca\.p[ae]-\d{4}0(?P<wild>[1-6])_mon\.nc",
+            ["aiihca.pa-234501_mon.nc", "aiihca.pa-234502_mon.nc", "aiihca.pa-234503_mon.nc",
+             "aiihca.pa-234504_mon.nc", "aiihca.pa-234505_mon.nc", "aiihca.pa-234506_mon.nc",
+             "aiihca.pa-234507_mon.nc", "aiihca.pa-234508_mon.nc", "aiihca.pa-234509_mon.nc",
+             "aiihca.pa-234510_mon.nc", "aiihca.pa-234511_mon.nc", "aiihca.pa-234512_mon.nc",],
+            [["aiihca.pa-234501_mon.nc", "aiihca.pa-234502_mon.nc", "aiihca.pa-234503_mon.nc",
+              "aiihca.pa-234504_mon.nc", "aiihca.pa-234505_mon.nc", "aiihca.pa-234506_mon.nc",],
+             ["aiihca.pa-234507_mon.nc"], ["aiihca.pa-234508_mon.nc"], ["aiihca.pa-234509_mon.nc"],
+             ["aiihca.pa-234510_mon.nc"], ["aiihca.pa-234511_mon.nc"], ["aiihca.pa-234512_mon.nc"],],
+        )
     ]
 )
 def test_filepath_grouping(glob_regex, filepath_list, expected_lists):
